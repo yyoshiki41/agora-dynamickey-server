@@ -1,15 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/AgoraIO/AgoraDynamicKey/go/src/DynamicKey5"
 )
+
+type RecordingKey struct {
+	UserID int64 `json:"user_id"`
+}
 
 func main() {
 	http.HandleFunc("/", pingHandler)
@@ -26,16 +33,30 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func recordingKeyHandler(w http.ResponseWriter, r *http.Request) {
-	appID := ""
-	appCertificate := ""
+	appID := os.Getenv("APP_ID")
+	appCertificate := os.Getenv("APP_CERTIFICATE")
 	channelName := strings.TrimPrefix(r.URL.Path, "/recording_key/")
 
-	uid := uint32(2882341273)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+	}
+	var rec RecordingKey
+	if err := json.Unmarshal(body, &rec); err != nil {
+		log.Println(err)
+	}
+	userID := uint32(rec.UserID)
+	userID = uint32(2882341273)
+
+	fmt.Printf("APP_ID: %s\n", appID)
+	fmt.Printf("APP_CERTIFICATE: %s\n", appCertificate)
+	fmt.Printf("userID: %d\n", userID)
+
 	randomInt := uint32(rand.Int31n(100))
 	unixTs := uint32(time.Now().Unix())
 	expiredTs := uint32(0)
 
-	recordingKey, err := DynamicKey5.GenerateRecordingKey(appID, appCertificate, channelName, unixTs, randomInt, uid, expiredTs)
+	recordingKey, err := DynamicKey5.GenerateRecordingKey(appID, appCertificate, channelName, unixTs, randomInt, userID, expiredTs)
 	if err != nil {
 		log.Println(err)
 	}
